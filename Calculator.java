@@ -1,6 +1,6 @@
 import javax.swing.*;
 import java.awt.*;
-import java.util.ArrayList;
+import java.util.*;
 
 public class Calculator extends JFrame {
     JTextField display;
@@ -33,8 +33,8 @@ public Calculator() {
 JPanel buttonPanel = new JPanel(new GridLayout(5, 4, 3, 3));
     String[] buttons = {
     "C","Del","%","History",
-    "7","8","9","/",
-    "4","5","6","*",
+    "7","8","9","÷",
+    "4","5","6","×",
     "1","2","3","-",
     "0",".","=","+"
     };
@@ -63,18 +63,16 @@ setVisible(true);
 void handleButton(String btn) {
     switch (btn) {
         case "=":
-        if (!expression.isEmpty()) {
-            try {
+            if (!expression.isEmpty()) try {
                 double result = evaluateExpression(expression);
                 historyList.add(expression + " = " + result);
-            if (historyVisible) updateHistory();
+                if (historyVisible) updateHistory();
                 display.setText(String.valueOf(result));
                 expression = String.valueOf(result);
             } catch (Exception ex) {
                 display.setText("Error");
                 expression = "";
             }
-        }
         break;
     case "C":
         expression = "";
@@ -101,19 +99,19 @@ void handleButton(String btn) {
         }
         break;
     default:
-        if (btn.matches("[+\\-*/]")) {
-            if (!expression.isEmpty() && !expression.endsWith("+") && !expression.endsWith("-") 
-                && !expression.endsWith("*") && !expression.endsWith("/")) {
+        if ("+-×÷".contains(btn)) {
+            String t = expression.trim();
+            if (!t.isEmpty() && "+-×÷".indexOf(t.charAt(t.length() - 1)) == -1) {
                 expression += " " + btn + " ";
                 display.setText(expression);
             }
         } else if (btn.equals(".")) {
             if (!expression.isEmpty()) {
-                String lastNum = expression.substring(expression.lastIndexOf(" ") + 1);
-                if (!lastNum.contains(".")) {
-                    expression += ".";
-                    display.setText(expression);
-                }
+                String t = expression.trim();
+                String last = t.substring(t.lastIndexOf(' ') + 1);
+                if ("+-×÷".contains(last)) expression += " 0.";
+                else if (!last.contains(".")) expression += ".";
+                display.setText(expression);
             }
         } else {
             expression = expression.equals("0") ? btn : expression + btn;
@@ -123,39 +121,49 @@ void handleButton(String btn) {
 }
 
 void toggleHistory() {
-    if (historyVisible) {
-    mainPanel.remove(scrollPane);
-    historyVisible = false;
-    setSize(400, 400);
-    } else {
-    updateHistory();
-    mainPanel.add(scrollPane, BorderLayout.EAST);
-    historyVisible = true;
-    setSize(600, 400);
-    }
+    if (historyVisible) { mainPanel.remove(scrollPane); setSize(400, 400); historyVisible = false; }
+    else { updateHistory(); mainPanel.add(scrollPane, BorderLayout.EAST); setSize(600, 400); historyVisible = true; }
     mainPanel.revalidate();
     mainPanel.repaint();
 }
 
 void updateHistory() {
-    historyArea.setText("");
-    for (String h : historyList) historyArea.append(h + "\n");
+    historyArea.setText(String.join("\n", historyList));
 }
 
 double evaluateExpression(String expr) {
-    String[] tokens = expr.split(" ");
-    double result = Double.parseDouble(tokens[0]);
-    for (int i = 1; i < tokens.length; i += 2) {
-        String op = tokens[i];
-        double num = Double.parseDouble(tokens[i + 1]);
-        switch (op) {
-            case "+": result += num; break;
-            case "-": result -= num; break;
-            case "*": result *= num; break;
-            case "/": result /= num; break;
+    String[] t = expr.trim().split("\\s+");
+    Deque<Double> values = new ArrayDeque<>();
+    Deque<Character> ops = new ArrayDeque<>();
+
+    values.push(Double.parseDouble(t[0]));
+    for (int i = 1; i < t.length; i += 2) {
+        char op = t[i].charAt(0);
+        double nextNum = Double.parseDouble(t[i + 1]);
+
+        while (!ops.isEmpty() && precedence(ops.peek()) >= precedence(op)) {
+            applyOp(values, ops.pop());
         }
+        ops.push(op);
+        values.push(nextNum);
     }
-    return result;
+    while (!ops.isEmpty()) applyOp(values, ops.pop());
+    return values.pop();
+}
+
+int precedence(char op) {
+    return (op == '×' || op == '÷') ? 2 : 1;
+}
+
+void applyOp(Deque<Double> values, char op) {
+    double b = values.pop();
+    double a = values.pop();
+    switch (op) {
+        case '+': values.push(a + b); break;
+        case '-': values.push(a - b); break;
+        case '×': values.push(a * b); break;
+        case '÷': values.push(a / b); break;
+    }
 }
 public static void main(String[] args) {
     new Calculator();
