@@ -11,7 +11,7 @@ public class Calculator extends JFrame {
     JPanel mainPanel;
     JScrollPane scrollPane;
 
-
+    
 public Calculator() {
     setTitle("Calculator");
     setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -29,7 +29,6 @@ public Calculator() {
     display.setText("0");
     mainPanel.add(display, BorderLayout.NORTH);
 
-
 JPanel buttonPanel = new JPanel(new GridLayout(5, 4, 3, 3));
     String[] buttons = {
     "C","Del","%","History",
@@ -45,7 +44,6 @@ for (String btn : buttons) {
     buttonPanel.add(button);
     button.addActionListener(e -> handleButton(btn));
     }
-
 
 historyArea = new JTextArea(15, 15);
 historyArea.setFont(new Font("Arial", Font.PLAIN, 11));
@@ -89,9 +87,15 @@ void handleButton(String btn) {
         break;
     case "%":
         try {
-            double current = Double.parseDouble(expression);
-            current = current / 100;
-            expression = String.valueOf(current);
+            String t = expression.trim();
+            if (t.isEmpty()) break;
+
+            int lastSpace = t.lastIndexOf(' ');
+            String last = (lastSpace == -1) ? t : t.substring(lastSpace + 1);
+            if ("+-×÷".contains(last)) throw new IllegalArgumentException();
+            if (last.endsWith("%")) break; 
+            String prefix = (lastSpace == -1) ? "" : t.substring(0, lastSpace + 1);
+            expression = prefix + last + "%";
             display.setText(expression);
         } catch (Exception e) {
             display.setText("Error");
@@ -136,10 +140,10 @@ double evaluateExpression(String expr) {
     Deque<Double> values = new ArrayDeque<>();
     Deque<Character> ops = new ArrayDeque<>();
 
-    values.push(Double.parseDouble(t[0]));
+    values.push(parseNumber(t[0]));
     for (int i = 1; i < t.length; i += 2) {
         char op = t[i].charAt(0);
-        double nextNum = Double.parseDouble(t[i + 1]);
+        double nextNum = parseNumber(t[i + 1]);
 
         while (!ops.isEmpty() && precedence(ops.peek()) >= precedence(op)) {
             applyOp(values, ops.pop());
@@ -149,6 +153,13 @@ double evaluateExpression(String expr) {
     }
     while (!ops.isEmpty()) applyOp(values, ops.pop());
     return values.pop();
+}
+
+double parseNumber(String token) {
+    if (token.endsWith("%")) {
+        return Double.parseDouble(token.substring(0, token.length() - 1)) / 100;
+    }
+    return Double.parseDouble(token);
 }
 
 int precedence(char op) {
